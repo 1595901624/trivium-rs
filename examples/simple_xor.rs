@@ -19,12 +19,12 @@ fn main() {
     let iv = hex_to_bytes("00000000000000000000");
     let msg = b"hello".to_vec();
 
-    let ct = trivium::trivium_xor(key_reversed.clone(), iv.clone(), msg.clone(), Some("msb".into()))
+    let ct = trivium::trivium_xor(key_reversed.clone(), iv.clone(), msg.clone())
         .expect("encrypt");
     let hex = ct.iter().map(|b| format!("{:02x}", b)).collect::<String>();
     println!("ciphertext: {}", hex);
 
-    let pt = trivium::trivium_xor(key_reversed, iv, ct, Some("msb".into()))
+    let pt = trivium::trivium_xor(key_reversed, iv, ct)
         .expect("decrypt");
     assert_eq!(pt, msg);
     println!("decrypted ok");

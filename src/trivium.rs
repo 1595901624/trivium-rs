@@ -16,14 +16,8 @@ enum PackOrder {
     Lsb,
 } 
 
-fn parse_bit_order(bit_order: Option<String>) -> Result<BitOrder, String> {
-    match bit_order.as_deref().map(|s| s.trim().to_ascii_lowercase()) {
-        None => Ok(BitOrder::Msb),
-        Some(s) if s == "msb" || s == "msb-first" || s == "msb_first" => Ok(BitOrder::Msb),
-        Some(s) if s == "lsb" || s == "lsb-first" || s == "lsb_first" => Ok(BitOrder::Lsb),
-        Some(s) => Err(format!("Unsupported bitOrder: {s} (expected 'msb' or 'lsb')")),
-    }
-}
+// `parse_bit_order` removed: key/IV bits are interpreted MSB-first by default.
+
 
 fn normalize_to_fixed(input: &[u8], target_len: usize) -> [u8; KEY_BYTES] {
     // NOTE: target_len is always 10 in our usage; keep small and simple.
@@ -148,29 +142,26 @@ impl Trivium {
 ///
 /// - `key` / `iv`: arbitrary-length bytes; will be truncated/padded to 10 bytes (80-bit)
 /// - `data`: input bytes
-/// - `bitOrder`: optional (`"msb"` default, or `"lsb"`)
+/// - Key/IV bits are read MSB-first within each byte.
 ///
 /// # Examples
 /// ```
 /// let key = vec![0u8; 10];
 /// let iv = vec![0u8; 10];
 /// let data = b"hello".to_vec();
-/// let ct = trivium::trivium_xor(key.clone(), iv.clone(), data.clone(), Some("msb".into())).unwrap();
-/// let pt = trivium::trivium_xor(key, iv, ct, Some("msb".into())).unwrap();
+/// let ct = trivium::trivium_xor(key.clone(), iv.clone(), data.clone()).unwrap();
+/// let pt = trivium::trivium_xor(key, iv, ct).unwrap();
 /// assert_eq!(pt, data);
 /// ```
 pub fn trivium_xor(
     key: Vec<u8>,
     iv: Vec<u8>,
     data: Vec<u8>,
-    bit_order: Option<String>,
 ) -> Result<Vec<u8>, String> {
-    let order = parse_bit_order(bit_order)?;
-    // Match common "byte-oriented" usage in tools: keystream is typically presented LSB-first per byte.
-    // Keep `bitOrder` to control ONLY how key/IV bits are read within each byte.
-    let trivium = Trivium::new(&key, &iv, order, PackOrder::Lsb);
+    // Default to MSB when reading key/IV bits within each byte.
+    let trivium = Trivium::new(&key, &iv, BitOrder::Msb, PackOrder::Lsb);
     Ok(trivium.xor_bytes(&data))
-}
+} 
 
 #[cfg(test)]
 mod tests {
@@ -218,9 +209,8 @@ mod tests {
             let msg_len = (prng() as usize) % 512;
             let msg = random_bytes(&mut prng, msg_len);
 
-            let ct = trivium_xor(key.clone(), iv.clone(), msg.clone(), Some("msb".into()))
-                .expect("encrypt");
-            let pt = trivium_xor(key, iv, ct, Some("msb".into())).expect("decrypt");
+            let ct = trivium_xor(key.clone(), iv.clone(), msg.clone()).expect("encrypt");
+            let pt = trivium_xor(key, iv, ct).expect("decrypt");
 
             assert_eq!(pt, msg);
         }
@@ -236,9 +226,8 @@ mod tests {
             let msg_len = (prng() as usize) % 512;
             let msg = random_bytes(&mut prng, msg_len);
 
-            let ct = trivium_xor(key.clone(), iv.clone(), msg.clone(), Some("lsb".into()))
-                .expect("encrypt");
-            let pt = trivium_xor(key, iv, ct, Some("lsb".into())).expect("decrypt");
+            let ct = Trivium::new(&key, &iv, BitOrder::Lsb, PackOrder::Lsb).xor_bytes(&msg);
+            let pt = Trivium::new(&key, &iv, BitOrder::Lsb, PackOrder::Lsb).xor_bytes(&ct);
 
             assert_eq!(pt, msg);
         }
@@ -250,8 +239,8 @@ mod tests {
         let iv = vec![4, 5];
         let msg = b"hello".to_vec();
 
-        let ct = trivium_xor(key.clone(), iv.clone(), msg.clone(), None).unwrap();
-        let pt = trivium_xor(key, iv, ct, None).unwrap();
+        let ct = trivium_xor(key.clone(), iv.clone(), msg.clone()).unwrap();
+        let pt = trivium_xor(key, iv, ct).unwrap();
 
         assert_eq!(pt, msg);
     }
@@ -275,7 +264,7 @@ mod tests {
         let mut key_reversed = key.clone();
         key_reversed.reverse();
 
-        let ct = trivium_xor(key_reversed, iv, msg, Some("msb".into())).unwrap();
+        let ct = trivium_xor(key_reversed, iv, msg).unwrap();
         assert_eq!(ct, expected);
     }
 }
