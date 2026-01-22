@@ -5,14 +5,14 @@ const IV_BYTES: usize = 10;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
-enum BitOrder {
+pub enum BitOrder {
     Msb,
     Lsb,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
-enum PackOrder {
+pub enum PackOrder {
     Lsb,
 } 
 
@@ -43,7 +43,7 @@ fn get_bit(bytes: &[u8], bit_index: usize, order: BitOrder) -> u8 {
 }
 
 #[derive(Clone)]
-struct Trivium {
+pub struct Trivium {
     s1: [u8; 93],
     s2: [u8; 84],
     s3: [u8; 111],
@@ -51,7 +51,11 @@ struct Trivium {
 }
 
 impl Trivium {
-    fn new(key_raw: &[u8], iv_raw: &[u8], load_order: BitOrder, pack_order: PackOrder) -> Self {
+    /// Create a new `Trivium` instance.
+    ///
+    /// `load_order` controls how key/IV bits are read within each input byte (MSB or LSB).
+    /// `pack_order` controls how keystream bits are packed into output bytes.
+    pub fn new(key_raw: &[u8], iv_raw: &[u8], load_order: BitOrder, pack_order: PackOrder) -> Self {
         let key = normalize_to_fixed(key_raw, KEY_BYTES);
         let iv = normalize_to_fixed(iv_raw, IV_BYTES);
 
@@ -128,7 +132,10 @@ impl Trivium {
         }
     }
 
-    fn xor_bytes(mut self, data: &[u8]) -> Vec<u8> {
+    /// XOR `data` with the Trivium keystream produced by this instance.
+    ///
+    /// Consumes the `Trivium` instance (it owns the state progression).
+    pub fn xor_bytes(mut self, data: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(data.len());
         for &v in data {
             let k = self.keystream_byte();
