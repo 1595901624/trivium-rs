@@ -6,6 +6,10 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 
 ## [Unreleased]
 
+- No changes yet.
+
+## [0.1.0] - 2026-01-22
+
 ### Changed
 - `trivium_xor` helper: removed the `bit_order` parameter; helper now defaults to MSB for key/IV bit interpretation.
 
@@ -17,9 +21,5 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - `parse_bit_order` helper function (no longer needed).
 
 <!--
-When releasing, move the Unreleased heading to a versioned release like:
-
-## [1.0.0] - 2026-01-22
-
-and add any relevant notes as necessary.
+When releasing, move the Unreleased heading to a future versioned release and add any relevant notes as necessary.
 -->
